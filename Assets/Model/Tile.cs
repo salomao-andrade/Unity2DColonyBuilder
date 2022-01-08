@@ -3,19 +3,20 @@ using System;
 namespace Model
 {
     public class Tile {
-        public enum TileType { Ground, Mountain, Water }
+        public enum TileType { Empty, Ground, Mountain, Water }
 
-        private TileType _type = TileType.Ground;
+        private TileType _type = TileType.Empty;
 
         private Action<Tile> cbTileTypeChanged;
         
-
         public TileType Type {
             get => _type;
             set {
+                var oldType = _type;
                 _type = value;
                 //Call the callback and let things know we've changed.
-                cbTileTypeChanged?.Invoke(this);
+                if (cbTileTypeChanged != null && oldType != _type)
+                    cbTileTypeChanged(this);
             }
         }
 
@@ -23,9 +24,7 @@ namespace Model
         private InstalledObject _installedObject;
 
         private World _world;
-
         public int X { get; }
-
         public int Y { get; }
 
         public Tile(World world, int x, int y) {

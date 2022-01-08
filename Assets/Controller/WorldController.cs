@@ -24,10 +24,12 @@ namespace Controller {
                             position = new Vector3(tileData.X, tileData.Y, 0)
                         }
                     };
+                    tileGo.transform.SetParent(this.transform, true);
+                    
                     //Add a sprite renderer, but dont bother setting a sprite, because all the tiles are empty
                     tileGo.AddComponent<SpriteRenderer>();
                     tileData.RegisterTileTypeChangedCallback((tile) => {
-                        OnTileTypeChanged(tile, tileGo)
+                        OnTileTypeChanged(tile, tileGo);
                     });
                 }
             }
@@ -35,14 +37,10 @@ namespace Controller {
             _world.RandomizeTiles();
         }
 
-        private float _randomizeTileTimer = 2f;
 
         // Update is called once per frame
         private void Update(){
-            _randomizeTileTimer -= Time.deltaTime;
-            if (!(_randomizeTileTimer < 0)) return;
-            _world.RandomizeTiles();
-            _randomizeTileTimer = 2f;
+            
         }
 
         private void OnTileTypeChanged(Tile tileData, GameObject tileGo){
