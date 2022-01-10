@@ -14,7 +14,6 @@ namespace Controller {
 
         private void Start(){
             circleCursor.SetActive(false);
-            
         }
 
         // Update is called once per frame
