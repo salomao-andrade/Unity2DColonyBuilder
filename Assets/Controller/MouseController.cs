@@ -1,89 +1,48 @@
+using System.Collections.Generic;
 using Model;
 using UnityEngine;
+using Util;
 
 namespace Controller {
     public class MouseController : MonoBehaviour {
         // Start is called before the first frame update
 
         public GameObject squareCursor;
-        public GameObject circleCursor;
+        public GameObject circleCursorPrefab;
 
         private Vector3 _lastFramePosition;
         private Vector3 _dragStartPosition;
+        private Vector3 _currFramePosition;
 
+        private List<GameObject> _dragPreviewGoList;
+
+        private Tile _tileUnderMouse;
 
         private void Start(){
-            circleCursor.SetActive(false);
+            // circleCursor.SetActive(false);
+            _dragPreviewGoList = new List<GameObject>();
         }
 
         // Update is called once per frame
         private void Update(){
+            _tileUnderMouse = WorldController.Instance.GetTileAtWorldCoord(_currFramePosition);
             if (Camera.main == null) return;
-            var currFramePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            currFramePosition.z = 0;
+            _currFramePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            _currFramePosition.z = 0;
 
-            var tileUnderMouse = GetTileAtWorldCoord(currFramePosition);
-            if (tileUnderMouse != null) {
-                squareCursor.SetActive(true);
-                squareCursor.transform.position = new Vector3(tileUnderMouse.X, tileUnderMouse.Y, 0);
-            } else {
-                squareCursor.SetActive(false);
-            }
+            var tileUnderMouse = UpdateCursor();
 
-            if (Input.GetAxis("Mouse ScrollWheel") != 0f) {
-                Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize - Input.GetAxis("Mouse ScrollWheel"),
-                                                        2f,
-                                                        10f);
-            }
+            UpdateZoom();
 
-            //Handle left mouse clicks
-            //Start drag
-            if (Input.GetMouseButtonDown(0)) {
-                _dragStartPosition = currFramePosition;
-                squareCursor.SetActive(false);
-                circleCursor.SetActive(true);
-                circleCursor.transform.position = new Vector3(tileUnderMouse.X, tileUnderMouse.Y, 0);
-            }
+            UpdateDragging();
 
-            if (Input.GetMouseButton(0)) {
-                squareCursor.SetActive(false);
-                circleCursor.SetActive(true);
-                var newCircleSR = circleCursor.GetComponent<SpriteRenderer>();
-                newCircleSR.sortingOrder = 0;
-                newCircleSR.sortingLayerName = "TileUI";
-                circleCursor.transform.position = new Vector3(tileUnderMouse.X, tileUnderMouse.Y, 0);
-            }
+            UpdateCameraMovement();
+        }
 
-            //End drag
-            if (Input.GetMouseButtonUp(0)) {
-                circleCursor.SetActive(false);
-                var startX = Mathf.FloorToInt(_dragStartPosition.x);
-                var endX = Mathf.FloorToInt(currFramePosition.x);
-                if (endX < startX) {
-                    //Change variables around if end is smaller than start
-                    (endX, startX) = (startX, endX);
-                }
-
-                var startY = Mathf.FloorToInt(_dragStartPosition.y);
-                var endY = Mathf.FloorToInt(currFramePosition.y);
-                if (endY < startY) {
-                    //Change variables around if end is smaller than start
-                    (endY, startY) = (startY, endY);
-                }
-
-                for (var x = startX; x <= endX; x++) {
-                    for (int y = startY; y <= endY; y++) {
-                        var t = WorldController.Instance.World.GetTileAt(x, y);
-                        if (t != null) {
-                            t.Type = Tile.TileType.Ground;
-                        }
-                    }
-                }
-            }
-
+        private void UpdateCameraMovement(){
             //Checks if right or middle mouse button is being pressed
             if (Input.GetMouseButton(2) || Input.GetMouseButton(1)) {
-                var diff = _lastFramePosition - currFramePosition;
+                var diff = _lastFramePosition - _currFramePosition;
                 //Moves camera using the difference
                 Camera.main.transform.Translate(diff);
             }
@@ -94,13 +53,83 @@ namespace Controller {
             _lastFramePosition.z = 0;
         }
 
-        private static Tile GetTileAtWorldCoord(Vector3 coord){
-            var x = Mathf.FloorToInt(coord.x);
-            var y = Mathf.FloorToInt(coord.y);
+        private void UpdateDragging(){
+            //Handle left mouse clicks
+            //Start drag
+            if (Input.GetMouseButtonDown(0)) {
+                _dragStartPosition = _currFramePosition;
+                squareCursor.SetActive(false);
+            }
 
-            var world = WorldController.Instance.World;
+            var startX = Mathf.FloorToInt(_dragStartPosition.x);
+            var endX = Mathf.FloorToInt(_currFramePosition.x);
+            if (endX < startX) {
+                //Change variables around if end is smaller than start
+                (endX, startX) = (startX, endX);
+            }
 
-            return world.GetTileAt(x, y);
+            var startY = Mathf.FloorToInt(_dragStartPosition.y);
+            var endY = Mathf.FloorToInt(_currFramePosition.y);
+            if (endY < startY) {
+                //Change variables around if end is smaller than start
+                (endY, startY) = (startY, endY);
+            }
+
+            //Clean up old drag previews
+            foreach (var t in _dragPreviewGoList) {
+                SimplePool.Despawn(t);
+            }
+
+            _dragPreviewGoList.Clear();
+
+            if (Input.GetMouseButton(0)) {
+                squareCursor.SetActive(false);
+                for (var x = startX; x <= endX; x++) {
+                    for (var y = startY; y <= endY; y++) {
+                        var t = WorldController.Instance.World.GetTileAt(x, y);
+                        if (t == null) continue;
+                        //Display the building hint on top of this tile position
+                        var go = SimplePool.Spawn(circleCursorPrefab, new Vector3(x, y, 0),
+                            Quaternion.identity);
+                        go.transform.SetParent(this.transform, true);
+                        _dragPreviewGoList.Add(go);
+                    }
+                }
+            }
+
+            //End drag
+            if (!Input.GetMouseButtonUp(0)) return;
+            // circleCursor.SetActive(false);
+            for (var x = startX; x <= endX; x++) {
+                for (var y = startY; y <= endY; y++) {
+                    var t = WorldController.Instance.World.GetTileAt(x, y);
+                    if (t != null) {
+                        t.Type = Tile.TileType.Ground;
+                    }
+                }
+            }
+        }
+
+        private static void UpdateZoom(){
+            var orthographicSize = Camera.main.orthographicSize;
+            orthographicSize -= orthographicSize * Input.GetAxis("Mouse ScrollWheel") * 0.7f;
+            Camera.main.orthographicSize = orthographicSize;
+            Camera.main.orthographicSize = Mathf.Clamp(
+                orthographicSize,
+                3f,
+                15f);
+        }
+
+        private Tile UpdateCursor(){
+            var tileUnderMouse = WorldController.Instance.GetTileAtWorldCoord(_currFramePosition);
+            if (tileUnderMouse != null) {
+                squareCursor.SetActive(true);
+                squareCursor.transform.position = new Vector3(tileUnderMouse.X, tileUnderMouse.Y, 0);
+            } else {
+                squareCursor.SetActive(false);
+            }
+
+            return tileUnderMouse;
         }
     }
 }

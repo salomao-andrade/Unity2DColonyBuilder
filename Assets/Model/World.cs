@@ -10,7 +10,7 @@ namespace Model
         public int Height { get; }
 
 
-        public World(int width = 100, int height = 100) {
+        public World(int width =100, int height =100) {
             this.Width = width;
             this.Height = height;
 

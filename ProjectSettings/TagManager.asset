@@ -44,6 +44,9 @@ TagManager:
   - name: Trees
     uniqueID: 3516461555
     locked: 0
+  - name: Fruit
+    uniqueID: 1374489533
+    locked: 0
   - name: TileUI
     uniqueID: 2757274071
     locked: 0

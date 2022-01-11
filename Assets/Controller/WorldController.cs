@@ -3,15 +3,14 @@ using UnityEngine;
 
 namespace Controller {
     public class WorldController : MonoBehaviour {
-        private static WorldController _instance;
-        public static WorldController Instance { get; protected set; }
+        public static WorldController Instance { get; private set; }
 
         public Sprite groundSprite;
         public Sprite waterSprite;
         public Sprite treeSprite;
         public Sprite fruitSprite;
 
-        public World  World { get; protected set; }
+        public World World { get; private set; }
 
         // Start is called before the first frame update
         private void Start(){
@@ -48,6 +47,7 @@ namespace Controller {
             RandomizeTrees();
         }
 
+        //TODO: Add trees to data layer, like tiles, and add sprites from that. Currently trees are only visual
         private void RandomizeTrees(){
             for (var x = 0; x < World.Width; x++) {
                 for (var y = 0; y < World.Height; y++) {
@@ -60,7 +60,10 @@ namespace Controller {
                     };
                     tree.transform.SetParent(this.transform, true);
                     tree.AddComponent<SpriteRenderer>();
-                    tree.GetComponent<SpriteRenderer>().sprite = treeSprite;
+                    var treeSr = tree.GetComponent<SpriteRenderer>();
+                    treeSr.sprite = treeSprite;
+                    treeSr.sortingOrder = 0;
+                    treeSr.sortingLayerName = "Trees";
                     if (Random.Range(0, 2) != 0) continue;
                     var fruit = new GameObject("Fruit_" + x + "_" + y) {
                         transform = {
@@ -69,15 +72,17 @@ namespace Controller {
                     };
                     fruit.transform.SetParent(this.transform, true);
                     fruit.AddComponent<SpriteRenderer>();
-                    fruit.GetComponent<SpriteRenderer>().sprite = fruitSprite;
+                    var fruitSr = fruit.GetComponent<SpriteRenderer>();
+                    fruitSr.sprite = fruitSprite;
+                    fruitSr.sortingOrder = 0;
+                    fruitSr.sortingLayerName = "Fruit";
                 }
             }
         }
 
 
         // Update is called once per frame
-        private void Update(){
-        }
+        private void Update(){ }
 
         private void OnTileTypeChanged(Tile tileData, GameObject tileGo){
             tileGo.GetComponent<SpriteRenderer>().sprite = tileData.Type switch {
@@ -85,6 +90,13 @@ namespace Controller {
                 Tile.TileType.Water => waterSprite,
                 _ => groundSprite
             };
+        }
+
+        public Tile GetTileAtWorldCoord(Vector3 coord){
+            var x = Mathf.FloorToInt(coord.x);
+            var y = Mathf.FloorToInt(coord.y);
+
+            return World.GetTileAt(x, y);
         }
     }
 }
