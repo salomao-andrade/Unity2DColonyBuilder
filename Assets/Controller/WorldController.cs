@@ -75,7 +75,7 @@ namespace Controller {
                     var fruitSr = fruit.GetComponent<SpriteRenderer>();
                     fruitSr.sprite = fruitSprite;
                     fruitSr.sortingOrder = 0;
-                    fruitSr.sortingLayerName = "Fruit";
+                    fruitSr.sortingLayerName = "Trees";
                 }
             }
         }
